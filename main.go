@@ -1,8 +1,12 @@
 package main
 
 import (
+	"os"
+	"time"
+
 	pagerduty "github.com/PagerDuty/go-pagerduty"
 	"github.com/belimawr/pagerduty-bot/config"
+	"github.com/belimawr/pagerduty-bot/reporter"
 	"github.com/caarlos0/env"
 )
 
@@ -18,6 +22,8 @@ func main() {
 	client := pagerduty.NewClient(cfg.AccessToken)
 
 	usersMap := map[string]string{}
+
+	storage := reporter.New()
 
 	//========================== List Users
 	users, err := client.ListUsers(pagerduty.ListUsersOptions{
@@ -53,13 +59,20 @@ func main() {
 			}
 
 			if oncall {
-				logger.Debug().Msgf("Oncall: %s - %s - %s",
-					o.Start, o.End, o.User.Summary)
-			}
+				day, err := time.Parse(time.RFC3339, o.End)
+				if err != nil {
+					logger.Error().Err(err).Msg("parsing oncall day")
+					continue
+				}
 
+				storage.AddDayForUser(o.User.Summary, day)
+				logger.Debug().Msgf("Oncall: %s - %s - %s, %s",
+					o.Start, o.End, o.User.Summary, o.User.ID)
+			}
 		}
 	}
 
+	storage.Report(os.Stdout)
 	//========================== List log entries
 	apiOpt := pagerduty.APIListObject{
 		Limit:  100,
