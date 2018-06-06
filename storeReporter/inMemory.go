@@ -58,7 +58,7 @@ func (r *inMemory) AddTimeForUser(user string, _ time.Time, time time.Duration) 
 
 func (r inMemory) Report(w io.Writer) {
 	for user := range r.m {
-		fmt.Fprintf(w, "%s:", user)
+		fmt.Fprintf(w, "%s: [%v]", user, r.m[user].mission)
 		for kind := range r.m[user].days {
 			fmt.Fprintf(w, "\n\t%s: ", kind)
 			for _, day := range r.m[user].days[kind] {

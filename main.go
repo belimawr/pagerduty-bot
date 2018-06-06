@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"regexp"
 	"time"
 
 	pagerduty "github.com/PagerDuty/go-pagerduty"
@@ -9,6 +10,8 @@ import (
 	reporter "github.com/belimawr/pagerduty-bot/storeReporter"
 	"github.com/caarlos0/env"
 )
+
+var r = regexp.MustCompile(`mission\.(?P<duration>(\d+(m|h)){1,3})$`)
 
 func main() {
 	cfg := config.Config{}
@@ -72,7 +75,6 @@ func main() {
 		}
 	}
 
-	storage.Report(os.Stdout)
 	//========================== List log entries
 	apiOpt := pagerduty.APIListObject{
 		Limit:  100,
@@ -99,14 +101,30 @@ func main() {
 			if l.Type == "annotate_log_entry" &&
 				l.Channel.Type == "note" &&
 				l.Agent.Type == "user_reference" {
-				logger.
-					Debug().
-					Msgf("Agent-type: %s, agent-ID: %s, createdAt: %s, "+
-						"summary: %#v",
-						l.Agent.Type,
-						usersMap[l.Agent.ID],
-						l.CreatedAt,
-						l.Channel.Summary)
+				user := usersMap[l.Agent.ID]
+
+				lst := r.FindStringSubmatch(l.Channel.Summary)
+				var duration time.Duration
+				var err error
+				if len(lst) >= 2 {
+					token := lst[1]
+					duration, err = time.ParseDuration(token)
+					if err == nil {
+						storage.AddTimeForUser(user, time.Now(), duration)
+					} else {
+						logger.Error().Msgf("error parsing: %q, err: %s", token, err)
+					}
+					logger.
+						Debug().
+						Msgf("Agent-type: %s, agent-ID: %s, createdAt: %s, "+
+							"summary: %#v",
+							l.Agent.Type,
+							user,
+							l.CreatedAt,
+							l.Channel.Summary)
+				} else {
+					logger.Warn().Msgf("could not parse: %q", l.Channel.Summary)
+				}
 			}
 		}
 
@@ -114,6 +132,8 @@ func main() {
 			break
 		}
 	}
+
+	storage.Report(os.Stdout)
 }
 
 func dayTyperFn(t time.Time) string {
