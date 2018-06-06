@@ -6,7 +6,7 @@ import (
 
 	pagerduty "github.com/PagerDuty/go-pagerduty"
 	"github.com/belimawr/pagerduty-bot/config"
-	"github.com/belimawr/pagerduty-bot/reporter"
+	reporter "github.com/belimawr/pagerduty-bot/storeReporter"
 	"github.com/caarlos0/env"
 )
 
@@ -23,7 +23,7 @@ func main() {
 
 	usersMap := map[string]string{}
 
-	storage := reporter.New()
+	storage := reporter.New(reporter.DayTyperFunc(dayTyperFn))
 
 	//========================== List Users
 	users, err := client.ListUsers(pagerduty.ListUsersOptions{
@@ -114,4 +114,12 @@ func main() {
 			break
 		}
 	}
+}
+
+func dayTyperFn(t time.Time) string {
+	if t.Weekday() == time.Saturday ||
+		t.Weekday() == time.Sunday {
+		return "non-business-day"
+	}
+	return "business-day"
 }
