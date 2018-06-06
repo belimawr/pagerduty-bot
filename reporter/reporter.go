@@ -14,7 +14,7 @@ type Reporter interface {
 // Store - Interface to store the data
 type Store interface {
 	AddDayForUser(user string, day time.Time)
-	//	AddTimeForUser(user string, day time.Time, time time.Duration)
+	AddTimeForUser(user string, day time.Time, time time.Duration)
 }
 
 // StoreReporter - a Store that also generates Reports
@@ -78,6 +78,20 @@ func (r *inMemory) AddDayForUser(user string, day time.Time) {
 	}
 
 	r.m[user].days[kind] = addToSet(r.m[user].days[kind], key)
+}
+
+func (r *inMemory) AddTimeForUser(user string, _ time.Time, time time.Duration) {
+	var userData onCallReport
+	var ok bool
+
+	if userData, ok = r.m[user]; !ok {
+		userData = onCallReport{
+			days: map[string][]string{},
+		}
+	}
+
+	userData.mission += time
+	r.m[user] = userData
 }
 
 func (r inMemory) Report(w io.Writer) {

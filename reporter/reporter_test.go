@@ -32,3 +32,21 @@ func Test_oncallReport_addDayForUser(t *testing.T) {
 			user)
 	}
 }
+
+func Test_inMemory_AddTimerForUser(t *testing.T) {
+	val := 1 * time.Second
+	expectedMission := 3 * val
+	user := "foo"
+	r := &inMemory{
+		m: map[string]onCallReport{},
+	}
+
+	for i := 0; i < 3; i++ {
+		r.AddTimeForUser(user, time.Now(), val)
+	}
+
+	if r.m[user].mission != expectedMission {
+		t.Errorf("expecting r.m[%q].mission: %v, got: %v",
+			user, r.m[user].mission, expectedMission)
+	}
+}
